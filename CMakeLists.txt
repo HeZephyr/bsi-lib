@@ -1,61 +1,38 @@
+# CMakeLists.txt
 cmake_minimum_required(VERSION 3.10)
-project(BSI_Implementation VERSION 1.0)
+project(bsi)
 
-# Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Enable optimizations for Release builds
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
+# Find the Roaring Bitmap library
+find_path(ROARING_INCLUDE_DIR roaring/roaring.h)
+find_library(ROARING_LIBRARY roaring)
 
-# Find CRoaring library
-find_package(roaring REQUIRED)
-
-# Set include directories
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-
-# Define source files
-set(SOURCES
-    roaring_bitmap.cpp
-    bsi.cpp
-    bsi_arithmetic.cpp
-)
-
-# Define header files
-set(HEADERS
-    roaring_bitmap.h
-    bsi.h
-    bsi_arithmetic.h
-)
-
-# Create library target
-add_library(bsi_lib ${SOURCES} ${HEADERS})
-target_link_libraries(bsi_lib PRIVATE roaring::roaring)
-
-# Add SIMD optimization flags if available
-include(CheckCXXCompilerFlag)
-check_cxx_compiler_flag("-mavx2" COMPILER_SUPPORTS_AVX2)
-if(COMPILER_SUPPORTS_AVX2)
-    target_compile_options(bsi_lib PRIVATE -mavx2)
+if(NOT ROARING_INCLUDE_DIR OR NOT ROARING_LIBRARY)
+    message(FATAL_ERROR "Roaring Bitmap library not found. Please install it first.")
 endif()
 
-# Create an example executable
-add_executable(bsi_example examples/bsi_example.cpp)
-target_link_libraries(bsi_example PRIVATE bsi_lib)
+# Add include directories
+include_directories(${ROARING_INCLUDE_DIR} include)
 
-# Build tests
-option(BUILD_TESTS "Build tests" ON)
-if(BUILD_TESTS)
-    enable_testing()
-    add_subdirectory(tests)
-endif()
+# Add library
+add_library(bsi
+    src/roaring_bitmap.cpp
+    src/bsi.cpp
+    src/bsi_arithmetic.cpp
+)
 
-# Install targets
-install(TARGETS bsi_lib
+# Link with the Roaring Bitmap library
+target_link_libraries(bsi ${ROARING_LIBRARY})
+
+# Add examples
+add_subdirectory(examples)
+
+# Simple installation rules
+install(TARGETS bsi
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
-    RUNTIME DESTINATION bin
 )
 
 install(FILES ${HEADERS} DESTINATION include/bsi)
